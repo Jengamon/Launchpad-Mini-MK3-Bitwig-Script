@@ -280,7 +280,7 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
   let color = this.clip_color[slotIndex];
   let armed = this.armed[slotIndex];
 
-  // if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed} ${transport.isPlaying().get()}`);
+  if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed} ${transport.isPlaying().get()}`);
   if(transport.isPlaying().get()) {
     switch(state) {
       case -1:
@@ -290,10 +290,9 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
         }
         break;
       case 0: // stopped
+        setPadSolid(pad_index, color);
         if(queued) {
           setPadFlash(pad_index, 0x05);
-        } else {
-          setPadSolid(pad_index, color);
         }
         break;
       case 1: // playing
