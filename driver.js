@@ -1,6 +1,7 @@
 const SYSEX_HEADER = "f0002029020d";
 const PLAY_COLOR = 0x1A;
 const RECORD_COLOR = 0x5;
+const ARM_COLOR = 0x79;
 
 const STOPPED_COLOR = 0x79;
 const PLAYING_COLOR = 0x78;
@@ -12,7 +13,7 @@ const MUTE_ON_COLOR = 0x54;
 const MUTE_OFF_COLOR = 0x53;
 
 var session_in, session_out;
-var tracks, ssm;
+var tracks, ssm, view_refresh;
 
 function init() {
    transport = host.createTransport();
@@ -92,24 +93,28 @@ function onMidi0(status, data1, data2) {
         if(data2 == 127) { // on press
           // displayText("10", "0001", "Left");
           tracks.scrollBackwards();
+
         }
         break;
       case 94: // Right
         if(data2 == 127) { // on press
           // displayText("10", "0001", "Right");
           tracks.scrollForwards();
+
         }
         break;
       case 91: // Up
         if(data2 == 127) { // on press
           // displayText("10", "0001", "Up");
           tracks.sceneBank().scrollBackwards();
+
         }
         break;
       case 92: // Down
         if(data2 == 127) { // on press
           // displayText("10", "0001", "Down");
           tracks.sceneBank().scrollForwards();
+
         }
         break;
       case 89: // Top row, trigger scene
@@ -136,8 +141,6 @@ function onMidi0(status, data1, data2) {
       case 19: // StopSoloMute
         if(data2 == 127) { // on press
           ssm.mode = (ssm.mode + 1) % 4;
-          ssm.colorAllPads();
-          ssm.refresh();
         }
         break;
        // Can't really do much with these cc
@@ -214,6 +217,8 @@ function onMidi0(status, data1, data2) {
        }
      }
    }
+   // Refresh the pads based off of our changes
+   view_refresh();
 }
 
 function launchClip(track_index, slotIndex) {
@@ -254,20 +259,14 @@ function SceneObserver(pi) {
 }
 
 SceneObserver.prototype.initialize = function() {
-  this.clip_color = [1, 1, 1, 1, 1, 1, 1, 1];
+  this.clip_color = [0, 0, 0, 0, 0, 0, 0, 0];
   this.current_state = [-1, -1, -1, -1, -1, -1, -1, -1];
   this.queued = [false, false, false, false, false, false, false, false];
   this.armed = [false, false, false, false, false, false, false, false];
 }
 
 SceneObserver.prototype.stateObserve = function(slotIndex, playbackState, isQueued) {
-  // println(`SO${this.pad_index}: ${slotIndex} ${playbackState} ${isQueued}`)
-
-  // If the current_state == -1 ("uninit") and we are told that we are currently stopped, do not update.
-  // Updating would cause desyncs if one project had played clips and the new project does not have any clips at all.
-  if(this.current_state[slotIndex] == -1 && playbackState == 0 && isQueued == false) {
-    return;
-  }
+  println(`SO${this.pad_index}: ${slotIndex} ${playbackState} ${isQueued} ${this.current_state[slotIndex]}`)
 
   this.current_state[slotIndex] = playbackState;
   this.queued[slotIndex] = isQueued;
@@ -280,80 +279,51 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
   let color = this.clip_color[slotIndex];
   let armed = this.armed[slotIndex];
 
-  if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed} ${transport.isPlaying().get()}`);
-  if(transport.isPlaying().get()) {
-    switch(state) {
-      case -1:
-        // Uninitialized pad.
-        if(armed) {
-          setPadSolid(pad_index, 0x7);
-        }
-        break;
-      case 0: // stopped
-        setPadSolid(pad_index, color);
-        if(queued) {
-          setPadFlash(pad_index, 0x05);
-        }
-        break;
-      case 1: // playing
-        setPadSolid(pad_index, color);
-        if(queued) {
-          setPadFlash(pad_index, PLAY_COLOR);
-        } else {
-          setPadPulse(pad_index, PLAY_COLOR);
-        }
-        break;
-      case 2: // recording
-        setPadSolid(pad_index, color);
-        if(queued) {
-          setPadFlash(pad_index, RECORD_COLOR);
-        } else {
-          setPadPulse(pad_index, color);
-        }
-        break;
-      default:
-        host.errorln(`Invalid pad state: ${pad_index} ${state}`);
-    }
-  } else {
-    switch(state) {
-      case -1:
-        // Uninitialized pad.
-        if(armed) {
-          setPadSolid(pad_index, 0x7);
-        }
-        break;
-      case 0: // stopped
-        setPadSolid(pad_index, color);
-        break;
-      case 1: // playing
-        setPadSolid(pad_index, color);
+  if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed}`);
+  switch(state) {
+    case -1:
+      // Uninitialized pad.
+      if(armed) {
+        setPadSolid(pad_index, ARM_COLOR);
+      }
+      break;
+    case 0: // stopped
+      setPadSolid(pad_index, color);
+      if(queued) {
+        setPadFlash(pad_index, 0x05);
+      }
+      break;
+    case 1: // playing
+      setPadSolid(pad_index, color);
+      if(queued) {
         setPadFlash(pad_index, PLAY_COLOR);
-        break;
-      case 2: // recording
-        setPadSolid(pad_index, color);
+      } else {
+        setPadPulse(pad_index, PLAY_COLOR);
+      }
+      break;
+    case 2: // recording
+      setPadSolid(pad_index, color);
+      if(queued) {
         setPadFlash(pad_index, RECORD_COLOR);
-        break;
-      default:
-        host.errorln(`Invalid pad state: ${pad_index} ${state}`);
-    }
+      } else {
+        setPadPulse(pad_index, color);
+      }
+      break;
+    default:
+      host.errorln(`Invalid pad state: ${pad_index} ${state}`);
   }
 }
 
 SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
-  // println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
+  println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
   let color = find_novation_color(red, green, blue);
-  if(color != 0) {
-    this.clip_color[slotIndex] = color;
-
-    // If we haven't recorded a state, record the state as stopped.
-    if(this.current_state[slotIndex] === -1) {
-      this.current_state[slotIndex] = 0;
-    }
-  } else {
-    // Deinit the pad
+  this.clip_color[slotIndex] = color;
+  // If we haven't recorded a state, and the color was not 0, record the state as stopped.
+  if(this.current_state[slotIndex] === -1 && color != 0) {
+    this.current_state[slotIndex] = 0;
+  } else if (color == 0) {
     this.current_state[slotIndex] = -1;
   }
-
 };
 
 SceneObserver.prototype.colorAllPads = function() {
@@ -449,8 +419,8 @@ function setupSessionView() {
     update(so, ssm);
   }
 
-  // Copy the refresh method to ssm.
-  ssm.refresh = refresh;
+  // Copy the refresh method globally
+  view_refresh = refresh;
 
   for(let t = 0; t < 8; t++) {
     let track = tracks.getItemAt(t);
@@ -477,8 +447,6 @@ function setupSessionView() {
       ssm.armed[t] = as;
       refresh();
     });
-
-    transport.isPlaying().addValueObserver(() => refresh());
 
     track.position().addValueObserver((pos) => print(`T: ${t} ${pos}`));
     track.solo().addValueObserver((v) => { ssm.setSolo(t, v); refresh() });
