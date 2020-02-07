@@ -118,25 +118,39 @@ function onMidi0(status, data1, data2) {
         }
         break;
       case 89: // Top row, trigger scene
-        tracks.sceneBank().launchScene(0);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(0);
+        }
         break;
       case 79: // Second row, trigger scene
-        tracks.sceneBank().launchScene(1);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(1);
+        };
         break;
       case 69:
-        tracks.sceneBank().launchScene(2);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(2);
+        };
         break;
       case 59:
-        tracks.sceneBank().launchScene(3);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(3);
+        };
         break;
       case 49:
-        tracks.sceneBank().launchScene(4);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(4);
+        };
         break;
       case 39:
-        tracks.sceneBank().launchScene(5);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(5);
+        };
         break;
       case 29:
-        tracks.sceneBank().launchScene(6);
+        if(data2 == 127) {
+          tracks.sceneBank().launchScene(6);
+        };
         break;
       case 19: // StopSoloMute
         if(data2 == 127) { // on press
