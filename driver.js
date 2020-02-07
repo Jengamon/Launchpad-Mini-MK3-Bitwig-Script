@@ -273,7 +273,7 @@ function SceneObserver(pi) {
 }
 
 SceneObserver.prototype.initialize = function() {
-  this.clip_color = [0, 0, 0, 0, 0, 0, 0, 0];
+  this.clip_color = [1, 1, 1, 1, 1, 1, 1, 1];
   this.current_state = [-1, -1, -1, -1, -1, -1, -1, -1];
   this.queued = [false, false, false, false, false, false, false, false];
   this.armed = [false, false, false, false, false, false, false, false];
