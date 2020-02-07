@@ -363,7 +363,6 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
         break;
       case 1: // playing
         setPadFlash(pad_index, PLAY_COLOR);
-        println("OFF FLASH");
         break;
       case 2: // recording
         setPadFlash(pad_index, RECORD_COLOR);
@@ -547,7 +546,6 @@ function update(so, ssm) {
 function flush() {
   // Produce the values
   produce();
-  println("PRODUCED");
   // Sort through the midi queue for one message each.
   let mq = midi_queue;
   midi_queue = [];
