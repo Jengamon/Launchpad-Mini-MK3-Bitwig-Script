@@ -294,7 +294,7 @@ SceneObserver.prototype.initialize = function() {
 }
 
 SceneObserver.prototype.stateObserve = function(slotIndex, playbackState, isQueued) {
-  println(`SO${this.pad_index}: ${slotIndex} ${playbackState} ${isQueued}`)
+  // println(`SO${this.pad_index}: ${slotIndex} ${playbackState} ${isQueued}`)
 
   // If the current_state == -1 ("uninit") and we are told that we are currently stopped, do not update.
   // Updating would cause desyncs if one project had played clips and the new project does not have any clips at all.
@@ -313,7 +313,7 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
   let color = this.clip_color[slotIndex];
   let armed = this.armed[slotIndex];
 
-  // println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed}`);
+  // if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed} ${transport.isPlaying().get()}`);
   if(transport.isPlaying().get()) {
     switch(state) {
       case -1:
@@ -342,7 +342,7 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
         if(queued) {
           setPadFlash(pad_index, RECORD_COLOR);
         } else {
-          setPadPulse(pad_index, RECORD_COLOR);
+          setPadPulse(pad_index, color);
         }
         break;
       default:
@@ -359,9 +359,14 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
         }
         break;
       case 0: // stopped
-      case 1: // playing
-      case 2: // recording
         setPadSolid(pad_index, color);
+        break;
+      case 1: // playing
+        setPadFlash(pad_index, PLAY_COLOR);
+        println("OFF FLASH");
+        break;
+      case 2: // recording
+        setPadFlash(pad_index, RECORD_COLOR);
         break;
       default:
         host.errorln(`Invalid pad state: ${pad_index} ${state}`);
@@ -370,7 +375,7 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
 }
 
 SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
-  println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
+  // println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
   let color = find_novation_color(red, green, blue);
   if(color != 0) {
     this.clip_color[slotIndex] = color;
@@ -387,7 +392,6 @@ SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
 };
 
 SceneObserver.prototype.colorAllPads = function() {
-  // clearPadRow(this.pad_index);
   for(let i = 0; i < 8; i++) {
     this.colorPad(i);
   }
@@ -420,11 +424,6 @@ SSMSceneObserver.prototype.setMute = function(trackIndex, muteValue) {
 
 SSMSceneObserver.prototype.setStopped = function(trackIndex, stoppedValue) {
   this.stop_flags[trackIndex] = stoppedValue;
-  // if(stoppedValue) {
-  //   this.stop_colors[trackIndex] = STOPPED_COLOR;
-  // } else {
-  //   this.stop_colors[trackIndex] = PLAYING_COLOR;
-  // }
 }
 
 SSMSceneObserver.prototype.colorPad = function(slotIndex) {
@@ -548,6 +547,7 @@ function update(so, ssm) {
 function flush() {
   // Produce the values
   produce();
+  println("PRODUCED");
   // Sort through the midi queue for one message each.
   let mq = midi_queue;
   midi_queue = [];
@@ -572,7 +572,9 @@ function flush() {
       }
       // Otherwise mess.color == 0, and we just ignore it.
     } else {
-      // println(`zd${om} ${JSON.stringify(mess)}`)
+      if(mess.color != 0) {
+        // println(`zd${om} ${JSON.stringify(mess)}`)
+      }
       // We are the first seen message for this pad.
       optimal_message[mess.pad_num] = mess;
     }
@@ -580,8 +582,17 @@ function flush() {
 
   // Send the messages
   let messages = Object.keys(optimal_message).map((key) => optimal_message[key]);
+  let status = [0x90, 0x91, 0x92];
+  // We only want at most one status to be true at a time.
   for(let i = 0; i < messages.length; i++) {
     let mess = messages[i];
+    if(mess.color != 0) {
+      let s = status.filter((k) => k != mess.status);
+      for(let i = 0; i < s.length; i++) {
+        session_out.sendMidi(s[i], mess.pad_num, 0);
+        // println(`Sending message ${s[i]} ${mess.pad_num} ${0} <- ${mess.status}`);
+      }
+    }
     //println(`Sending message ${mess.status} ${mess.pad_num} ${mess.color}`);
     session_out.sendMidi(mess.status, mess.pad_num, mess.color);
   }
