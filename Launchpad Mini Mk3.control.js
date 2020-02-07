@@ -49,9 +49,6 @@ function init() {
    transport = host.createTransport();
    tracks = host.createTrackBank(8, 0, 8, false);
 
-   // Debug only
-   tracks.sceneBank().setIndication(true);
-
    session_in = host.getMidiInPort(0);
    session_out = host.getMidiOutPort(0);
 
