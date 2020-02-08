@@ -179,31 +179,45 @@ function onMidi0(status, data1, data2) {
      if(data1 > 80 && data1 < 89) {
        // First scene
        let index = data1 - 81;
-       launchClip(index, 0);
+       if(data2 == 127) {
+         launchClip(index, 0);
+       }
      } else if(data1 > 70 && data1 < 79) {
        // Second scene
        let index = data1 - 71;
-       launchClip(index, 1);
+       if(data2 == 127) {
+         launchClip(index, 1);
+       }
      } else if(data1 > 60 && data1 < 69) {
        // Second scene
        let index = data1 - 61;
-       launchClip(index, 2);
+       if(data2 == 127) {
+         launchClip(index, 2);
+       }
      } else if(data1 > 50 && data1 < 59) {
        // Second scene
        let index = data1 - 51;
-       launchClip(index, 3);
+       if(data2 == 127) {
+         launchClip(index, 3);
+       }
      } else if(data1 > 40 && data1 < 49) {
        // Second scene
        let index = data1 - 41;
-       launchClip(index, 4);
+       if(data2 == 127) {
+         launchClip(index, 4);
+       }
      } else if(data1 > 30 && data1 < 39) {
        // Second scene
        let index = data1 - 31;
-       launchClip(index, 5);
+       if(data2 == 127) {
+         launchClip(index, 5);
+       }
      } else if(data1 > 20 && data1 < 29) {
        // Second scene
        let index = data1 - 21;
-       launchClip(index, 6);
+       if(data2 == 127) {
+         launchClip(index, 6);
+       }
      } else if (data1 > 10 && data1 < 19) {
        // The last row, which can switch from SSM mode to clip mode
        let index = data1 - 11;
@@ -211,7 +225,9 @@ function onMidi0(status, data1, data2) {
        switch(ssm.mode) {
          case 0:
           // Normal clip operation
-          launchClip(index, 7);
+          if(data2 == 127) {
+            launchClip(index, 7);
+          }
           break;
         case 1: // Stop mode
           if(data2 == 127) {
@@ -273,7 +289,7 @@ function SceneObserver(pi) {
 }
 
 SceneObserver.prototype.initialize = function() {
-  this.clip_color = [1, 1, 1, 1, 1, 1, 1, 1];
+  this.clip_color = [0, 0, 0, 0, 0, 0, 0, 0];
   this.current_state = [-1, -1, -1, -1, -1, -1, -1, -1];
   this.queued = [false, false, false, false, false, false, false, false];
   this.armed = [false, false, false, false, false, false, false, false];
@@ -294,6 +310,12 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
   let armed = this.armed[slotIndex];
 
   if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed}`);
+
+  // hacky fix
+  if(state == 0 && color == 0) {
+    state - -1;
+  }
+
   switch(state) {
     case -1:
       // Uninitialized pad.
