@@ -334,7 +334,7 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
       if(queued) {
         setPadFlash(pad_index, PLAY_COLOR);
       } else {
-        setPadPulse(pad_index, PLAY_COLOR);
+        setPadPulse(pad_index, color);
       }
       break;
     case 2: // recording
