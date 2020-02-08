@@ -290,9 +290,10 @@ function SceneObserver(pi) {
 
 SceneObserver.prototype.initialize = function() {
   this.clip_color = [0, 0, 0, 0, 0, 0, 0, 0];
-  this.current_state = [-1, -1, -1, -1, -1, -1, -1, -1];
+  this.current_state = [0, 0, 0, 0, 0, 0, 0, 0];
   this.queued = [false, false, false, false, false, false, false, false];
   this.armed = [false, false, false, false, false, false, false, false];
+  this.has_content = [false, false, false, false, false, false, false, false];
 }
 
 SceneObserver.prototype.stateObserve = function(slotIndex, playbackState, isQueued) {
@@ -308,45 +309,41 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
   let queued = this.queued[slotIndex];
   let color = this.clip_color[slotIndex];
   let armed = this.armed[slotIndex];
+  let hasContent = this.has_content[slotIndex];
 
-  if(state != -1) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed}`);
+  if(hasContent) println(`Coloring ${pad_index} ${state} ${queued} ${color} ${armed} ${hasContent}`);
 
-  // hacky fix
-  if(state == 0 && color == 0) {
-    state - -1;
-  }
-
-  switch(state) {
-    case -1:
-      // Uninitialized pad.
-      if(armed) {
-        setPadSolid(pad_index, ARM_COLOR);
-      }
-      break;
-    case 0: // stopped
-      setPadSolid(pad_index, color);
-      if(queued) {
-        setPadFlash(pad_index, 0x05);
-      }
-      break;
-    case 1: // playing
-      setPadSolid(pad_index, color);
-      if(queued) {
-        setPadFlash(pad_index, PLAY_COLOR);
-      } else {
-        setPadPulse(pad_index, color);
-      }
-      break;
-    case 2: // recording
-      setPadSolid(pad_index, color);
-      if(queued) {
-        setPadFlash(pad_index, RECORD_COLOR);
-      } else {
-        setPadPulse(pad_index, color);
-      }
-      break;
-    default:
-      host.errorln(`Invalid pad state: ${pad_index} ${state}`);
+  if(hasContent) {
+    switch(state) {
+      case 0: // stopped
+        setPadSolid(pad_index, color);
+        if(queued) {
+          setPadFlash(pad_index, 0x05);
+        }
+        break;
+      case 1: // playing
+        setPadSolid(pad_index, color);
+        if(queued) {
+          setPadFlash(pad_index, PLAY_COLOR);
+        } else {
+          setPadPulse(pad_index, color);
+        }
+        break;
+      case 2: // recording
+        setPadSolid(pad_index, color);
+        if(queued) {
+          setPadPulse(pad_index, RECORD_COLOR);
+        } else {
+          setPadFlash(pad_index, RECORD_COLOR);
+        }
+        break;
+      default:
+        host.errorln(`Invalid pad state: ${pad_index} ${state}`);
+    }
+  } else {
+    if(armed) {
+      setPadSolid(pad_index, ARM_COLOR);
+    }
   }
 }
 
@@ -354,12 +351,18 @@ SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
   println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
   let color = find_novation_color(red, green, blue);
   this.clip_color[slotIndex] = color;
-  // If we haven't recorded a state, and the color was not 0, record the state as stopped.
-  if(this.current_state[slotIndex] === -1 && color != 0) {
+  // If we haven't recorded a state, record the state as stopped.
+  if(this.current_state[slotIndex] === -1) {
     this.current_state[slotIndex] = 0;
   } else if (color == 0) {
     this.current_state[slotIndex] = -1;
   }
+};
+
+SceneObserver.prototype.colorObserveTrack = function(slotIndex, red, green, blue) {
+  println(`COT${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
+  let color = find_novation_color(red, green, blue);
+  this.clip_color[slotIndex] = color;
 };
 
 SceneObserver.prototype.colorAllPads = function() {
@@ -443,7 +446,7 @@ SSMSceneObserver.prototype.colorPad = function(slotIndex) {
 // Update the session view pads like the Ableton integration
 function setupSessionView() {
   let so = [];
-  let pad_rows = [80, 70, 60, 50, 40, 30, 20];
+  let pad_rows = [80, 70, 60, 50, 40, 30, 20, 10];
   for(let i = 0; i < 7; i++) {
     so.push(new SceneObserver(pad_rows[i]));
   }
@@ -461,6 +464,16 @@ function setupSessionView() {
   for(let t = 0; t < 8; t++) {
     let track = tracks.getItemAt(t);
     let clsb = track.clipLauncherSlotBank();
+
+    // Update has_content
+    for(let clip = 0; clip < 8; clip++) {
+      if(clip < so.length){
+        clsb.getItemAt(clip).hasContent().addValueObserver((c) => { so[clip].has_content[t] = c; });
+      } else {
+        clsb.getItemAt(clip).hasContent().addValueObserver((c) => { ssm.has_content[t] = c; });
+      }
+    }
+
     clsb.addPlaybackStateObserver((s, ps, q) => {
       if(s < so.length) { so[s].stateObserve(t, ps, q); } else {
         // s == 7
@@ -472,6 +485,19 @@ function setupSessionView() {
       if(s < so.length) { so[s].colorObserve(t, r, g, b); } else {
         // s == 7
         ssm.colorObserve(t, r, g, b);
+      }
+      refresh();
+    });
+
+    track.color().addValueObserver((r, g, b) => {
+      // Update all rows with the new track color
+      for(let i = 0; i < 7; i++) {
+        if(clsb.getItemAt(i).hasContent().get()) {
+          so[i].colorObserveTrack(t, r, g, b);
+        }
+      }
+      if(clsb.getItemAt(7).hasContent().get()) {
+          ssm.colorObserveTrack(t, r, g, b);
       }
       refresh();
     });
