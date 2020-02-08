@@ -367,12 +367,6 @@ SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
   println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
   let color = find_novation_color(red, green, blue);
   this.clip_color[slotIndex] = color;
-  // If we haven't recorded a state, record the state as stopped.
-  if(this.current_state[slotIndex] === -1) {
-    this.current_state[slotIndex] = 0;
-  } else if (color == 0) {
-    this.current_state[slotIndex] = -1;
-  }
 };
 
 SceneObserver.prototype.colorObserveTrack = function(slotIndex, red, green, blue) {
