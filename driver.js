@@ -344,6 +344,22 @@ SceneObserver.prototype.colorPad = function(slotIndex) {
     if(armed) {
       setPadSolid(pad_index, ARM_COLOR);
     }
+
+    switch(state) {
+      case 0: // stopped
+      case 1: // playing
+        // Impossible or trivial. Do nothing.
+        break;
+      case 2: // recording
+        if(queued) {
+          setPadPulse(pad_index, RECORD_COLOR);
+        } else {
+          setPadFlash(pad_index, RECORD_COLOR);
+        }
+        break;
+      default:
+        host.errorln(`Invalid pad state: ${pad_index} ${state}`);
+    }
   }
 }
 
