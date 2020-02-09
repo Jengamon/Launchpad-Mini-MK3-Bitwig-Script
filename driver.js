@@ -19,6 +19,8 @@ function init() {
    transport = host.createTransport();
    tracks = host.createTrackBank(8, 0, 8, false);
 
+   tracks.sceneBank().setIndication(true);
+
    // TODO Build hardware model using HardwareSurface
 
    session_in = host.getMidiInPort(0);
@@ -36,9 +38,12 @@ function init() {
    // Set to DAW mode
    session_out.sendSysex(`${SYSEX_HEADER}1001f7`);
 
+   // Clear Daw mode
+   session_out.sendSysex(`${SYSEX_HEADER}12000000f7`);
+
    // Swap to session mode
    session_out.sendSysex(`${SYSEX_HEADER}0000f7`);
-   host.showPopupNotification("Mode: Session");
+   // host.showPopupNotification("Mode: Session");
 
    // Forward all custom mode inputs to Bitwig.
    let ni = host.getMidiInPort(1).createNoteInput("Custom Input", "??????");
@@ -367,12 +372,6 @@ SceneObserver.prototype.colorObserve = function(slotIndex, red, green, blue) {
   println(`CO${this.pad_index}: ${slotIndex} ${red} ${green} ${blue}`);
   let color = find_novation_color(red, green, blue);
   this.clip_color[slotIndex] = color;
-  // If we haven't recorded a state, record the state as stopped.
-  if(this.current_state[slotIndex] === -1) {
-    this.current_state[slotIndex] = 0;
-  } else if (color == 0) {
-    this.current_state[slotIndex] = -1;
-  }
 };
 
 SceneObserver.prototype.colorObserveTrack = function(slotIndex, red, green, blue) {

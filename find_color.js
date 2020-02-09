@@ -26,6 +26,7 @@ var colors = {
   "e4b74e": 0x3E,
   "739814": 0x13,
   "a0c04c": 0x11,
+  "808080": 0x1,
 }
 
 function find_novation_color(red, green, blue) {
