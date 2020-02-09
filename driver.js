@@ -19,6 +19,8 @@ function init() {
    transport = host.createTransport();
    tracks = host.createTrackBank(8, 0, 8, false);
 
+   tracks.sceneBank().setIndication(true);
+
    // TODO Build hardware model using HardwareSurface
 
    session_in = host.getMidiInPort(0);
@@ -36,9 +38,12 @@ function init() {
    // Set to DAW mode
    session_out.sendSysex(`${SYSEX_HEADER}1001f7`);
 
+   // Clear Daw mode
+   session_out.sendSysex(`${SYSEX_HEADER}12000000f7`);
+
    // Swap to session mode
    session_out.sendSysex(`${SYSEX_HEADER}0000f7`);
-   host.showPopupNotification("Mode: Session");
+   // host.showPopupNotification("Mode: Session");
 
    // Forward all custom mode inputs to Bitwig.
    let ni = host.getMidiInPort(1).createNoteInput("Custom Input", "??????");
